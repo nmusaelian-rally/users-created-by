@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Users Created By</title>
+
+    <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function () {
+                Ext.define("CustomApp",{extend:"Rally.app.App",componentCls:"app",_users:[],launch:function(){var millisecondsInDay=864e5,currentDate=new Date,startDate=new Date(currentDate-180*millisecondsInDay).toISOString(),that=this,users=Ext.create("Rally.data.wsapi.Store",{model:"User",fetch:["UserName","RevisionHistory","Revisions","User"],limit:1/0,autoLoad:!0,filters:[{property:"CreationDate",operator:">=",value:startDate}]});users.load().then({success:this._getRevHistoryModel,scope:this}).then({success:this._onRevHistoryModelCreated,scope:this}).then({success:this._onModelLoaded,scope:this}).then({success:this._stitchDataTogether,scope:this}).then({success:function(results){that._makeGrid(results)},failure:function(){console.log("oh noes!")}})},_getRevHistoryModel:function(users){return this._users=users,Rally.data.ModelFactory.getModel({type:"RevisionHistory"})},_onRevHistoryModelCreated:function(model){var that=this,promises=[];return _.each(this._users,function(user){var ref=user.get("RevisionHistory")._ref;console.log(user.get("UserName"),ref),promises.push(model.load(Rally.util.Ref.getOidFromRef(ref)))}),Deft.Promise.all(promises)},_onModelLoaded:function(histories){var promises=[];return _.each(histories,function(history){var revisions=history.get("Revisions");revisions.store=history.getCollection("Revisions",{fetch:["User","CreationDate","Description"]}),promises.push(revisions.store.load())}),Deft.Promise.all(promises)},_stitchDataTogether:function(revhistories){var that=this,usersWithRevs=[];_.each(that._users,function(user){usersWithRevs.push({user:user.data})});var i=0;return _.each(revhistories,function(revisions){var originalRev=_.last(revisions).data;usersWithRevs[i].originalRevision=originalRev,i++}),usersWithRevs},_makeGrid:function(usersWithRevs){console.log(usersWithRevs),this.add({xtype:"rallygrid",showPagingToolbar:!0,showRowActionsColumn:!1,editable:!1,store:Ext.create("Rally.data.custom.Store",{data:usersWithRevs}),columnCfgs:[{text:"UserName",dataIndex:"user",minWidth:200,renderer:function(value){return value.UserName}},{text:"Created by",dataIndex:"originalRevision",minWidth:200,renderer:function(value){return value.User._refObjectName}},{text:"Created on",dataIndex:"originalRevision",minWidth:200,renderer:function(value){return value.CreationDate}}]})}});
+
+            Rally.launchApp('CustomApp', {
+                name:"Users Created By",
+	            parentRepos:""
+            });
+
+        });
+    </script>
+
+
+    <style type="text/css">
+        
+    </style>
+</head>
+<body>
+</body>
+</html>
